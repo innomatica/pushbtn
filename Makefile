@@ -138,6 +138,7 @@ C_INCLUDES =  \
 C_SOURCES += ../utility/stm32/Src/UsrTimer.c
 C_SOURCES += ../utility/stm32/Src/PushButton.c
 C_SOURCES += ../utility/stm32/Src/EvtQueue.c
+C_SOURCES += ../utility/stm32/Src/SerialComm.c
 C_INCLUDES += -I../utility/stm32/Inc
 
 # compile gcc flags

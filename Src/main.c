@@ -138,7 +138,20 @@ int main(void)
 					}
 					else if(event[2] == PBTN_TCLK)
 					{
-						UartPrintf("Button %d: triple click.\r\n", event[1]);
+						UartPrintf("Button %d: triple click.", event[1]);
+
+						PushButton_SetMode(PUSHBTN_MODE_UDOWN);
+						UartPrintf(" --> Switch to up-down mode.\r\n");
+					}
+					else if(event[2] == PBTN_DOWN)
+					{
+						UartPrintf("Button %d: is being pressed.\r\n", event[1]);
+					}
+					else if(event[2] == PBTN_ENDN)
+					{
+						UartPrintf("Button %d: has been released.", event[1]);
+						PushButton_SetMode(PUSHBTN_MODE_CLICK);
+						UartPrintf(" --> Switch to click mode.\r\n");
 					}
 					break;
 				
