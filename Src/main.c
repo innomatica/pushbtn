@@ -121,46 +121,51 @@ int main(void)
 		{
 			switch(event[0])
 			{
-				// pushbutton event
-				case EVT_PBTN_INPUT:
+			// pushbutton event
+			case EVT_PBTN_INPUT:
 
-					if(event[2] == PBTN_SCLK)
-					{
-						UartPrintf("Button %d: single click.\r\n", event[1]);
-					}
-					else if(event[2] == PBTN_LCLK)
-					{
-						UartPrintf("Button %d: long click.\r\n", event[1]);
-					}
-					else if(event[2] == PBTN_DCLK)
-					{
-						UartPrintf("Button %d: double click.\r\n", event[1]);
-					}
-					else if(event[2] == PBTN_TCLK)
-					{
-						UartPrintf("Button %d: triple click.", event[1]);
+				if(event[2] == PBTN_SCLK)
+				{
+					UartPrintf("Button %d: single click.\r\n", event[1]);
+				}
+				else if(event[2] == PBTN_LCLK)
+				{
+					UartPrintf("Button %d: long click.\r\n", event[1]);
+				}
+				else if(event[2] == PBTN_DCLK)
+				{
+					UartPrintf("Button %d: double click.\r\n", event[1]);
+				}
+				else if(event[2] == PBTN_TCLK)
+				{
+					UartPrintf("Button %d: triple click.", event[1]);
 
-						PushButton_SetMode(PUSHBTN_MODE_UDOWN);
-						UartPrintf(" --> Switch to up-down mode.\r\n");
-					}
-					else if(event[2] == PBTN_DOWN)
-					{
-						UartPrintf("Button %d: is being pressed.\r\n", event[1]);
-					}
-					else if(event[2] == PBTN_ENDN)
-					{
-						UartPrintf("Button %d: has been released.", event[1]);
-						PushButton_SetMode(PUSHBTN_MODE_CLICK);
-						UartPrintf(" --> Switch to click mode.\r\n");
-					}
-					break;
-				
-				case EVT_UART_RXPKT:
-					break;
+					PushButton_SetMode(PUSHBTN_MODE_UDOWN, true);
+					UartPrintf(" --> Switch to up-down mode.\r\n");
+				}
+				else if(event[2] == PBTN_DOWN)
+				{
+					UartPrintf("Button %d: is being pressed.\r\n", event[1]);
+				}
+				else if(event[2] == PBTN_ENDN)
+				{
+					UartPrintf("Button %d: has been released.", event[1]);
+					PushButton_SetMode(PUSHBTN_MODE_CLICK, true);
+					UartPrintf(" --> Switch to click mode.\r\n");
+				}
+				break;
 
-				default:
-					break;
+			case EVT_UART_RXPKT:
+				break;
+
+			default:
+				break;
 			}
+		}
+		else
+		{
+			// delay here is recommended not to call Evt_DeQueue too frequently
+			HAL_Delay(100);
 		}
 	}
 	/* USER CODE END 3 */
