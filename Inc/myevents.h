@@ -1,5 +1,5 @@
-#ifndef __EVT_DEFS_H
-#define __EVT_DEFS_H
+#ifndef __MY_EVENTS_H
+#define __MY_EVENTS_H
 
 /** Pushbutton input event
  *
@@ -21,4 +21,4 @@
  */
 #define EVT_UART_RXPKT			0x20		///< event code for UART RX packet
 
-#endif // __EVT_DEFS_H
+#endif // __MY_EVENTS_H

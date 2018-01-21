@@ -42,7 +42,15 @@
 
 /* Includes ------------------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <stdarg.h>
+#include "myevents.h"
+#include "myprotocol.h"
+#include "UsrTimer.h"
+#include "EvtQueue.h"
+#include "PushButton.h"
+#include "SerialComm.h"
+#include "stm32l0xx_ll_usart.h"
 /* USER CODE END Includes */
 
 /* Private define ------------------------------------------------------------*/

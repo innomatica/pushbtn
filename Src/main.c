@@ -41,11 +41,6 @@
 #include "stm32l0xx_hal.h"
 
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
-#include <stdarg.h>
-#include "UsrTimer.h"
-#include "EvtQueue.h"
-#include "PushButton.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -53,7 +48,11 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+uint8_t UartRxBuf1[MAX_PAYLOAD];
+uint8_t UartRxBuf2[MAX_PAYLOAD];
+uint8_t *UartIsrBuf = UartRxBuf1;
+uint8_t *UartRxBuf = 0;
+uint8_t bPktReceived = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -63,8 +62,8 @@ static void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+void UartRxTask(void);
 void UartPrintf(const char *format, ...);
-void TestCallback(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -77,6 +76,7 @@ int main(void)
 	/* USER CODE BEGIN 1 */
 	int result;
 	uint8_t event[EVT_QWIDTH];
+	uint8_t payload[MAX_PAYLOAD];
 	/* USER CODE END 1 */
 
 	/* MCU Configuration----------------------------------------------------------*/
@@ -100,12 +100,14 @@ int main(void)
 	MX_USART1_UART_Init();
 
 	/* USER CODE BEGIN 2 */
+	// initialize SerialComm
+	SerialComm_Init();
 	// initialize the pushbutton handler with mask byte.
 	PushButton_Init(0x01);
-	// start a timer routine: 100msec period, perpetual
-	result = UsrTimer_Set(100, 0, TestCallback);
+	// start a timer routine: 10msec period, perpetual
+	result = UsrTimer_Set(10, 0, UartRxTask);
 	// UART output test
-	UartPrintf("UsrTimer_Set returns: %d\n\r", result);
+	UartPrintf("\r\n\t\tSystem Started: %d\r\n", result);
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
@@ -121,41 +123,86 @@ int main(void)
 		{
 			switch(event[0])
 			{
-			// pushbutton event
+			// pushbutton event ================================================
+			// event[1]: button id
+			// event[2]: PBTN_SCLK, _DCLK, _TCLK, _LCLK, _DOWN, _ENDN
 			case EVT_PBTN_INPUT:
 
 				if(event[2] == PBTN_SCLK)
 				{
-					UartPrintf("Button %d: single click.\r\n", event[1]);
+					UartPrintf("\r\nButton %d: single click.", event[1]);
 				}
 				else if(event[2] == PBTN_LCLK)
 				{
-					UartPrintf("Button %d: long click.\r\n", event[1]);
+					UartPrintf("\r\nButton %d: long click.", event[1]);
 				}
 				else if(event[2] == PBTN_DCLK)
 				{
-					UartPrintf("Button %d: double click.\r\n", event[1]);
+					UartPrintf("\r\nButton %d: double click.", event[1]);
 				}
 				else if(event[2] == PBTN_TCLK)
 				{
-					UartPrintf("Button %d: triple click.", event[1]);
+					UartPrintf("\r\nButton %d: triple click.", event[1]);
 
 					PushButton_SetMode(PUSHBTN_MODE_UDOWN, true);
-					UartPrintf(" --> Switch to up-down mode.\r\n");
+					UartPrintf("\r\n --> Switch to up-down mode.");
 				}
 				else if(event[2] == PBTN_DOWN)
 				{
-					UartPrintf("Button %d: is being pressed.\r\n", event[1]);
+					UartPrintf("\r\nButton %d: is being pressed.", event[1]);
 				}
 				else if(event[2] == PBTN_ENDN)
 				{
-					UartPrintf("Button %d: has been released.", event[1]);
+					UartPrintf("\r\nButton %d: has been released.", event[1]);
 					PushButton_SetMode(PUSHBTN_MODE_CLICK, true);
-					UartPrintf(" --> Switch to click mode.\r\n");
+					UartPrintf("\r\n --> Switch to click mode.");
 				}
 				break;
 
+			// uart event ======================================================
+			// event[1]: payload size
+			// event[2]: command
+			// event[3:]: data
 			case EVT_UART_RXPKT:
+
+				if(event[2] == SYS_SRESET)
+				{
+					HAL_NVIC_SystemReset();
+				}
+				else if(event[2] == SYS_WRESET)
+				{
+					HAL_NVIC_SystemReset();
+				}
+				else if(event[2] == DIO_SETVAL)
+				{
+					if(event[3] == 0x01)
+					{
+						HAL_GPIO_WritePin(TEST_LED_GPIO_Port, TEST_LED_Pin,
+								GPIO_PIN_SET);
+
+						SerialComm_SendByte(PKT_ACK);
+					}
+				}
+				else if(event[2] == DIO_RSTVAL)
+				{
+					if(event[3] == 0x01)
+					{
+						HAL_GPIO_WritePin(TEST_LED_GPIO_Port, TEST_LED_Pin,
+								GPIO_PIN_RESET);
+
+						SerialComm_SendByte(PKT_ACK);
+					}
+				}
+				else if(event[2] == DIO_GETVAL)
+				{
+					if(event[3] == 0x01)
+					{
+						payload[0] = RPT_U08X01;
+						payload[1] = (uint8_t)HAL_GPIO_ReadPin(
+								TEST_LED_GPIO_Port, TEST_LED_Pin);
+						SerialComm_SendPacket(payload, 2);
+					}
+				}
 				break;
 
 			default:
@@ -165,7 +212,7 @@ int main(void)
 		else
 		{
 			// delay here is recommended not to call Evt_DeQueue too frequently
-			HAL_Delay(100);
+			HAL_Delay(10);
 		}
 	}
 	/* USER CODE END 3 */
@@ -334,14 +381,77 @@ uint8_t PushButton_Read()
 	}
 }
 
-/** UsrTimer() callback test
+/** UART Rx Task
  */
-void TestCallback()
+void UartRxTask()
 {
-	HAL_GPIO_TogglePin(TEST_LED_GPIO_Port, TEST_LED_Pin);
-}
-/* USER CODE END 4 */
+	int i;
+	uint8_t event[EVT_QWIDTH];
 
+	// packet received
+	if(bPktReceived)
+	{
+		// event id
+		event[0] = EVT_UART_RXPKT;
+		// event data size
+		event[1] = UartRxBuf[1];
+
+		// copy the payload
+		for(i = 0; i< UartRxBuf[1]; i++)
+		{
+			event[2+i] = UartRxBuf[2+i];
+		}
+	
+		// register the event
+		Evt_EnQueue(event);
+		// clear the flag
+		bPktReceived = 0;
+	}
+}
+
+/** Initialize SerialComm
+ */
+void SerialComm_Init()
+{
+	LL_USART_EnableIT_RXNE(USART1);
+}
+
+void SerialComm_RxRoutine()
+{
+	pkt_status status;
+
+	status = SerialComm_Decoder(LL_USART_ReceiveData8(huart1.Instance),
+			UartIsrBuf);
+
+	if(status == PKT_RECEIVED)
+	{
+		// switch ping pong buffer
+		if(UartIsrBuf == UartRxBuf1)
+		{
+			UartIsrBuf = UartRxBuf2;
+			UartRxBuf = UartRxBuf1;
+		}
+		else
+		{
+			UartIsrBuf = UartRxBuf1;
+			UartRxBuf = UartRxBuf2;
+		}
+		// raise flag
+		bPktReceived = true;
+	}
+}
+
+void SerialComm_SendByte(uint8_t byte)
+{
+	LL_USART_TransmitData8(huart1.Instance, byte);
+}
+
+void SerialComm_SendByteArray(uint8_t *buffer, int size)
+{
+	HAL_UART_Transmit(&huart1, buffer, size, 1000);
+}
+
+/* USER CODE END 4 */
 /**
   * @brief  This function is executed in case of error occurrence.
   * @param  None
