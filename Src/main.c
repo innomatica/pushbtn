@@ -413,7 +413,7 @@ void UartRxTask()
  */
 void SerialComm_Init()
 {
-	LL_USART_EnableIT_RXNE(USART1);
+	LL_USART_EnableIT_RXNE(huart1.Instance);
 }
 
 void SerialComm_RxRoutine()
